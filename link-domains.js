@@ -31,24 +31,42 @@
   // dropdown so multiple pages can be selected at once (OR semantics: any
   // selected page matches), and each page matches as a whole word anywhere
   // in the comma-separated list.
-  var SLASH_TAGS = ["now", "about", "friends", "ideas"];
-  var EXTRA_TAGS = ["none", "unknown"];
+  var SENTINEL_TAGS = ["none", "unknown"];
   var headers = table.columns().header().toArray();
   var slashesColIdx = headers.findIndex(function (th) {
-    return th.textContent.trim() === "slashes";
+    return th.textContent.trim() === "pages";
   });
   if (slashesColIdx === -1) return;
 
-  var selected = [];
+  // Derive page tags from CSV data at runtime
+  var tagSet = {};
+  table.column(slashesColIdx).data().each(function (val) {
+    (val || "").split(",").forEach(function (t) {
+      t = t.trim();
+      if (t && SENTINEL_TAGS.indexOf(t) === -1) tagSet[t] = true;
+    });
+  });
+  var SLASH_TAGS = Object.keys(tagSet).sort();
+  var allTags = SLASH_TAGS.concat(SENTINEL_TAGS);
 
-  function patternFor(tag) {
-    return tag === "none" || tag === "unknown" ? "^" + tag + "$" : "\\b" + tag + "\\b";
-  }
+  var params0 = new URLSearchParams(window.location.search);
+  var selected = (params0.get("pages") || "").split(",").filter(function (t) {
+    return allTags.indexOf(t) !== -1;
+  });
 
   function applyFilter() {
-    var pattern = selected.map(patternFor).join("|");
-    table.column(slashesColIdx).search(pattern, true, false).draw();
+    table.search.fixed("pages-filter", selected.length ? function (_, data) {
+      var cell = (data[slashesColIdx] || "").trim();
+      var cellPages = cell.split(",").map(function (s) { return s.trim(); });
+      return selected.some(function (tag) { return cellPages.indexOf(tag) !== -1; });
+    } : null);
+    table.draw();
     syncPanels();
+    var params = new URLSearchParams(window.location.search);
+    if (selected.length) params.set("pages", selected.join(","));
+    else params.delete("pages");
+    var qs = params.toString();
+    history.replaceState(null, "", qs ? "?" + qs : window.location.pathname);
   }
 
   var panels = [];
@@ -56,7 +74,7 @@
   function syncPanels() {
     panels.forEach(function (panel) {
       var count = selected.length;
-      panel.summary.textContent = count ? "slashes: " + selected.join(", ") : "Filter slashes";
+      panel.summary.textContent = count ? "pages: " + selected.join(", ") : "Filter pages";
       panel.checkboxes.forEach(function (cb) {
         cb.checked = selected.indexOf(cb.value) !== -1;
       });
@@ -70,14 +88,23 @@
     applyFilter();
   }
 
-  var builtinFilters = document.querySelectorAll('[aria-label="Filter slashes"]');
+  // Hide all selects at the pages column index (tfoot has two)
+  var filterCell = null;
+  table.table().container().querySelectorAll("tfoot select").forEach(function (sel) {
+    var cell = sel.closest("td, th");
+    if (cell && cell.cellIndex === slashesColIdx) {
+      sel.style.display = "none";
+      filterCell = cell;
+    }
+  });
+
+  var builtinFilters = [filterCell].filter(Boolean);
   builtinFilters.forEach(function (el) {
-    el.style.display = "none";
 
     var details = document.createElement("details");
     details.style.display = "inline-block";
     var summary = document.createElement("summary");
-    summary.textContent = "Filter slashes";
+    summary.textContent = "Filter pages";
     summary.style.cursor = "pointer";
     details.appendChild(summary);
 
@@ -87,7 +114,7 @@
       "border:1px solid rgba(127,127,127,.35);border-radius:6px;margin-top:2px;background:inherit;";
 
     var checkboxes = [];
-    SLASH_TAGS.concat(EXTRA_TAGS).forEach(function (tag) {
+    allTags.forEach(function (tag) {
       var label = document.createElement("label");
       label.style.cssText = "display:flex;align-items:center;gap:.35rem;font-weight:normal;white-space:nowrap;";
       var cb = document.createElement("input");
@@ -104,29 +131,19 @@
     details.appendChild(menu);
 
     panels.push({ summary: summary, checkboxes: checkboxes });
-    el.parentNode.insertBefore(details, el.nextSibling);
+    el.appendChild(details);
   });
 
-  // Stay in sync if the filter is cleared some other way (the active-filter
-  // chip's "x", or the "clear all" control), so checkboxes don't show stale
-  // state after an external reset.
-  table.on("search.dt", function () {
-    var current = table.column(slashesColIdx).search();
-    var tags = current
-      ? current
-          .split("|")
-          .map(function (part) {
-            var match = part.match(/^\^(.*)\$$/) || part.match(/^\\b(.*)\\b$/);
-            return match ? match[1] : null;
-          })
-          .filter(Boolean)
-      : [];
-    var changed = tags.length !== selected.length || tags.some(function (t) {
-      return selected.indexOf(t) === -1;
-    });
-    if (changed) {
-      selected = tags;
-      syncPanels();
+  if (selected.length) applyFilter();
+
+
+  // Shuffle rows on every page load
+  (function () {
+    var rows = table.rows().data().toArray();
+    for (var i = rows.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = rows[i]; rows[i] = rows[j]; rows[j] = tmp;
     }
-  });
+    table.clear().rows.add(rows).draw();
+  })();
 })();

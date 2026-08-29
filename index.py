@@ -18,6 +18,9 @@ LINK_JS_FILE = "link-domains.js"
 
 
 def main():
+    subprocess.run(["cottagecrawl", "slashindex"], check=True)
+    shutil.copy("/Users/anand/.config/cottagecrawl/slashindex.csv", CSV_FILE)
+
     csvtotable = shutil.which("csvtotable")
     if not csvtotable:
         sys.exit("csvtotable not found on PATH. Install with: uv tool install csvtotable")
@@ -37,6 +40,9 @@ def main():
         ],
         check=True,
     )
+
+    import webbrowser, pathlib
+    webbrowser.open(pathlib.Path(HTML_FILE).resolve().as_uri())
 
 
 if __name__ == "__main__":
