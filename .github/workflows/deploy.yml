@@ -1,0 +1,66 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - index.csv
+      - slashindex.csv
+      - link-domains.js
+      - description.html
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Merge CSVs and build index.html
+        run: |
+          uv tool install csvtotable
+
+          python - <<'EOF'
+          import csv, io
+
+          def score(row):
+              fields = ['author', 'topics', 'pages', 'country', 'state', 'city']
+              return sum(1 for f in fields if row.get(f, '').strip())
+
+          # Load slashindex.csv (has score column)
+          with open('slashindex.csv', newline='') as f:
+              reader = csv.DictReader(f)
+              slash_rows = {r['domain']: r for r in reader}
+
+          # Load index.csv (manual entries, no score column)
+          with open('index.csv', newline='') as f:
+              reader = csv.DictReader(f)
+              for r in reader:
+                  r['score'] = str(score(r))
+                  slash_rows[r['domain']] = r  # manual entries override
+
+          fields = ['domain', 'author', 'topics', 'pages', 'country', 'state', 'city', 'score']
+          with open('slashindex.csv', 'w', newline='') as f:
+              writer = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
+              writer.writeheader()
+              writer.writerows(slash_rows.values())
+          EOF
+
+          uvx csvtotable \
+            --overwrite \
+            --title "/Index" \
+            --description-html "@description.html" \
+            --js link-domains.js \
+            slashindex.csv index.html
+
+      - name: Commit rebuilt index.html
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html slashindex.csv
+          git diff --cached --quiet || git commit -m "chore: rebuild index.html"
+          git push

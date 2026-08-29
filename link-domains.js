@@ -2,6 +2,20 @@
 // to https://<domain>. Runs on every table draw so it survives sorting,
 // filtering, and pagination.
 (function () {
+  var style = document.createElement('style');
+  style.textContent = [
+    '@media (min-width: 768px) {',
+    '  html, body { overflow-x: hidden; }',
+    '  .dataTables_wrapper { width: 100%; }',
+    '  table.dataTable { table-layout: fixed; width: 100% !important; }',
+    '  table.dataTable td, table.dataTable th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+    '  table.dataTable td:first-child { width: 25%; }',
+    '}'
+  ].join('\n');
+  document.head.appendChild(style);
+})();
+
+(function () {
   var table = CsvToTable.table;
 
   function linkifyDomains() {
@@ -137,13 +151,46 @@
   if (selected.length) applyFilter();
 
 
-  // Shuffle rows on every page load
+  var scoreIdx = table.columns().header().toArray().map(function(th) { return th.textContent.trim(); }).indexOf('score');
+
+  // Hide score column
+  if (scoreIdx !== -1) {
+    table.column(scoreIdx).visible(false);
+  }
+
+  // Shuffle rows: group by score (desc), shuffle within each group
   (function () {
     var rows = table.rows().data().toArray();
-    for (var i = rows.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = rows[i]; rows[i] = rows[j]; rows[j] = tmp;
+
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      }
     }
-    table.clear().rows.add(rows).draw();
+
+    if (scoreIdx === -1) {
+      // no score column — fall back to plain shuffle
+      shuffle(rows);
+      table.clear().rows.add(rows).draw();
+      return;
+    }
+
+    var groups = {};
+    rows.forEach(function(row) {
+      var s = parseInt(row[scoreIdx], 10) || 0;
+      if (!groups[s]) groups[s] = [];
+      groups[s].push(row);
+    });
+
+    var sorted = Object.keys(groups).map(Number).sort(function(a, b) { return b - a; });
+    var result = [];
+    sorted.forEach(function(s) {
+      var g = groups[s];
+      shuffle(g);
+      result = result.concat(g);
+    });
+
+    table.clear().rows.add(result).draw();
   })();
 })();
