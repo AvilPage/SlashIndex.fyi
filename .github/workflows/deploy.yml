@@ -38,7 +38,7 @@ jobs:
 
           # Load index.csv (manual entries, no score column)
           with open('index.csv', newline='') as f:
-              reader = csv.DictReader(f)
+              reader = csv.DictReader(f, skipinitialspace=True)
               for r in reader:
                   r['score'] = str(score(r))
                   slash_rows[r['domain']] = r  # manual entries override
