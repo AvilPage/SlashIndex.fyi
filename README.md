@@ -1,6 +1,6 @@
 ### SlashIndex
 
-Find your people, fast.
+Find your people, fast — every personal blog on the planet, in one place.
 
 ### Slashes
 
@@ -11,6 +11,12 @@ Find your people, fast.
 
 
 ### Local Setup
+
+CottageCrawl generates a csv file.
+
+```shell
+cottagecrawl slashindex
+```
 
 ```shell
 uv run index.py
