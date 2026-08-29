@@ -150,6 +150,44 @@
 
   if (selected.length) applyFilter();
 
+  // --- URL param sync: global search + column selects ---
+  var initParams = new URLSearchParams(window.location.search);
+
+  // Global search
+  var initQ = initParams.get('q') || '';
+  if (initQ) table.search(initQ).draw();
+  var searchInput = table.table().container().querySelector('input[type="search"]');
+  if (searchInput) {
+    if (initQ) searchInput.value = initQ;
+    searchInput.addEventListener('input', function () {
+      var p = new URLSearchParams(window.location.search);
+      if (searchInput.value) p.set('q', searchInput.value);
+      else p.delete('q');
+      var qs = p.toString();
+      history.replaceState(null, '', qs ? '?' + qs : window.location.pathname);
+    });
+  }
+
+  // Column selects (skip pages column — already handled above)
+  table.table().container().querySelectorAll('tfoot select').forEach(function (sel) {
+    var cell = sel.closest('td, th');
+    if (!cell) return;
+    var colIdx = cell.cellIndex;
+    if (colIdx === slashesColIdx) return;
+    var colName = (headers[colIdx] && headers[colIdx].textContent.trim().toLowerCase()) || ('col' + colIdx);
+    var initVal = initParams.get(colName) || '';
+    if (initVal) {
+      sel.value = initVal;
+      table.column(colIdx).search(initVal).draw();
+    }
+    sel.addEventListener('change', function () {
+      var p = new URLSearchParams(window.location.search);
+      if (sel.value) p.set(colName, sel.value);
+      else p.delete(colName);
+      var qs = p.toString();
+      history.replaceState(null, '', qs ? '?' + qs : window.location.pathname);
+    });
+  });
 
   var scoreIdx = table.columns().header().toArray().map(function(th) { return th.textContent.trim(); }).indexOf('score');
 
