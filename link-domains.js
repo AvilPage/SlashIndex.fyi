@@ -10,7 +10,11 @@
     '  table.dataTable { table-layout: fixed; width: 100% !important; }',
     '  table.dataTable td, table.dataTable th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
     '  table.dataTable td:first-child { width: 25%; }',
-    '}'
+    '}',
+    'table.dataTable td a { color: var(--ct-accent); }',
+    'div.dts div.dt-scroll-body table { background-color: var(--ct-paper); }',
+    'div.dt-container { background: var(--ct-paper); }',
+    'table.dataTable tbody td { color: var(--ct-ink); }'
   ].join('\n');
   document.head.appendChild(style);
 })();
