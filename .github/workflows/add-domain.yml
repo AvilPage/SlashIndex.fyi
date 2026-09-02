@@ -1,0 +1,53 @@
+name: Add Domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: Domain to add (e.g. example.com)
+        required: true
+      gh:
+        description: GitHub username or profile URL for @mention
+        required: false
+      city:
+        description: Override city
+        required: false
+      state:
+        description: Override state/province
+        required: false
+      country:
+        description: Override country (e.g. "🇮🇳 IN")
+        required: false
+      llm:
+        description: Use LLM for extraction
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  add-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add domain
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARGS="${{ inputs.domain }}"
+          [ -n "${{ inputs.gh }}" ]        && ARGS="$ARGS --gh '${{ inputs.gh }}'"
+          [ -n "${{ inputs.city }}" ]      && ARGS="$ARGS --city '${{ inputs.city }}'"
+          [ -n "${{ inputs.state }}" ]     && ARGS="$ARGS --state '${{ inputs.state }}'"
+          [ -n "${{ inputs.country }}" ]   && ARGS="$ARGS --country '${{ inputs.country }}'"
+          [ "${{ inputs.llm }}" = "true" ] && ARGS="$ARGS --llm"
+          eval uv run --with httpx,trafilatura,beautifulsoup4 python add_domain.py $ARGS
