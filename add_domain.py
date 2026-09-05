@@ -411,6 +411,20 @@ def _resolve_gh(value: str) -> str:
     return value
 
 
+def github_profile_location(username: str) -> str:
+    """Return raw `location` field from GitHub profile, empty if unset/unavailable."""
+    try:
+        resp = subprocess.run(
+            ["gh", "api", f"users/{username}", "--jq", ".location"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if resp.returncode == 0:
+            return resp.stdout.strip()
+    except Exception:
+        pass
+    return ""
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("domain")
@@ -449,24 +463,33 @@ def main() -> None:
 
     print(f"Extracted: {info}")
 
-    if args.city:
-        info["city"] = args.city
-        if not args.state or not args.country:
-            geo = geocode_city(args.city)
-            if not args.state and geo.get("state"):
-                info["state"] = geo["state"]
-            if not args.country and geo.get("country"):
-                info["country"] = geo["country"]
-    if args.state:
-        info["state"] = args.state
-    if args.country:
-        info["country"] = args.country
-
     github_username = info.get("github_username") or None
     if args.gh:
         github_username = _resolve_gh(args.gh)
     if github_username:
         print(f"GitHub: {github_username}")
+
+    if args.city:
+        info["city"] = args.city
+    elif not info.get("city") and github_username:
+        loc = github_profile_location(github_username)
+        if loc:
+            city = loc.split(",")[0].strip()
+            if city:
+                info["city"] = city
+                print(f"GitHub profile location: {loc}")
+
+    if info.get("city") and (not args.state or not args.country):
+        geo = geocode_city(info["city"])
+        if not args.state and not info.get("state") and geo.get("state"):
+            info["state"] = geo["state"]
+        if not args.country and not info.get("country") and geo.get("country"):
+            info["country"] = geo["country"]
+
+    if args.state:
+        info["state"] = args.state
+    if args.country:
+        info["country"] = args.country
 
     print("Checking slash pages...")
     slash_pages = get_slash_pages(domain)
