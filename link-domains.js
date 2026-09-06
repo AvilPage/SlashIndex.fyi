@@ -12,11 +12,25 @@
     '  table.dataTable td:first-child { width: 25%; }',
     '}',
     'table.dataTable td a { color: var(--ct-accent); }',
+    '.csvtotable-title-link { color: var(--ct-accent); text-decoration: none; }',
+    '.csvtotable-title-link:hover { text-decoration: underline; }',
     'div.dts div.dt-scroll-body table { background-color: var(--ct-paper); }',
     'div.dt-container { background: var(--ct-paper); }',
     'table.dataTable tbody td { color: var(--ct-ink); }'
   ].join('\n');
   document.head.appendChild(style);
+})();
+
+(function () {
+  var title = document.getElementById("csvtotable-title");
+  if (title) {
+    var link = document.createElement("a");
+    link.href = "/";
+    link.textContent = title.textContent;
+    link.className = "csvtotable-title-link";
+    title.textContent = "";
+    title.appendChild(link);
+  }
 })();
 
 (function () {
