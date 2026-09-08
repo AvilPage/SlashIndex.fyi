@@ -335,7 +335,7 @@ def create_pr(domain: str, info: dict, slash_pages: list[str], github_username: 
     def pr_body() -> str:
         body = f"Add {domain} to index.\n\nauthor: {author}\ntopics: {topics_str}\nlocation: {city}, {state}, {country}"
         if github_username:
-            body += f"\ngh: @{github_username}"
+            body += f"\ngh: `{github_username}`"
         return body
 
     subprocess.run(["git", "checkout", "master"], check=True)
