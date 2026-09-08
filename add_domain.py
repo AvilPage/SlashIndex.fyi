@@ -150,6 +150,14 @@ def extract_author(html: str, text: str) -> str:
         if " " in val and len(val) < 40:
             return val
 
+    # footer copyright line, e.g. "Copyright 2026 Allan Reyes | Built with ..."
+    footer_text = soup.get_text(separator=" ")
+    m = re.search(r"(?:copyright|©)\s*\d{4}\s*([^|]+?)\s*(?:\||$)", footer_text, re.IGNORECASE)
+    if m:
+        val = m.group(1).strip()
+        if val and len(val.split()) <= 4 and len(val) < 60 and val[0].isupper():
+            return val
+
     return ""
 
 
