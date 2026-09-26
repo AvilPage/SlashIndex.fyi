@@ -29,7 +29,7 @@ jobs:
 
           def score(row):
               fields = ['author', 'topics', 'pages', 'country', 'state', 'city']
-              return sum(1 for f in fields if row.get(f, '').strip())
+              return sum(1 for f in fields if (row.get(f) or '').strip())
 
           # Load slashindex.csv (has score column)
           with open('slashindex.csv', newline='') as f:
