@@ -37,4 +37,19 @@ slashindex sync --output slashindex.csv
 slashindex build
 ```
 
+### Reprocessing domain metadata
+
+To fill blank `author`, `topics`, `pages`, `country`, `state`, and `city` fields from
+each domain's public website, run:
+
+```shell
+slashindex reprocess --csv index.csv
+```
+
+By default, only rows with every metadata field blank are processed. Existing values are
+always preserved. Use `--partial` to also process rows that have some metadata already
+filled, `--dry-run` to inspect the result without writing the CSV, or `--limit N` to
+process a smaller batch. Reprocessing also normalizes domains by removing `http://`,
+`https://`, and `www.` before writing the CSV.
+
 ### Deployment
