@@ -19,7 +19,7 @@ import httpx
 import trafilatura
 from bs4 import BeautifulSoup
 
-SLASH_PAGES = ["", "about", "now", "uses", "contact"]
+SLASH_PAGES = ["", "about", "about.html", "now", "uses", "contact"]
 USER_AGENT = "SlashIndex-Bot/1.0 (+https://slashindex.fyi)"
 REPO = "AvilPage/SlashIndex.fyi"
 INDEX_CSV = Path(__file__).parent / "index.csv"
@@ -221,7 +221,7 @@ def heuristic_extract(domain: str, pages: dict[str, tuple[str, str]]) -> dict:
     all_html = "\n".join(h for h, _ in pages.values())
     all_text = "\n".join(t for _, t in pages.values())
 
-    about_html, about_text = pages.get("about", ("", ""))
+    about_html, about_text = pages.get("about") or pages.get("about.html") or ("", "")
     home_html, home_text = pages.get("home", ("", ""))
 
     author = extract_author(about_html or home_html, about_text or home_text)
@@ -300,7 +300,7 @@ Rules:
 def get_slash_pages(domain: str) -> list[str]:
     found = []
     with httpx.Client(headers={"User-Agent": USER_AGENT}, follow_redirects=True) as client:
-        for page in ["about", "now", "uses", "contact", "colophon"]:
+        for page in ["about", "about.html", "now", "uses", "contact", "colophon"]:
             for scheme in ("https", "http"):
                 url = f"{scheme}://{domain}/{page}"
                 try:
@@ -323,6 +323,12 @@ def create_pr(domain: str, info: dict, slash_pages: list[str], github_username: 
 
     topics_str = ", ".join(info.get("topics") or [])
     new_row = f'{domain},{author},"{topics_str}","{pages_str}",{country},{state},{city}'
+
+    def pr_body() -> str:
+        body = f"Add {domain} to index.\n\nauthor: {author}\ntopics: {topics_str}\nlocation: {city}, {state}, {country}"
+        if github_username:
+            body += f"\ngh: @{github_username}"
+        return body
 
     subprocess.run(["git", "checkout", "master"], check=True)
     subprocess.run(["git", "pull", "origin", "master"], check=True)
@@ -354,9 +360,7 @@ def create_pr(domain: str, info: dict, slash_pages: list[str], github_username: 
         "gh", "pr", "create",
         "--repo", REPO,
         "--title", f"Add {domain} to SlashIndex.fyi",
-        "--body", f"Add {domain} to index.\n\nauthor: {author}\nlocation: {city}, {state}, {country}" +
-                  (f"\n\ncc @{github_username}" if github_username else "") +
-                  "\n\n---\n_Raised by AI. Feel free to update if any information is incorrect._",
+        "--body", pr_body(),
     ]
 
     # check for existing open PR on this branch
@@ -366,11 +370,8 @@ def create_pr(domain: str, info: dict, slash_pages: list[str], github_username: 
     )
     if existing_pr.returncode == 0 and existing_pr.stdout.strip():
         pr_url = existing_pr.stdout.strip()
-        body = (f"Add {domain} to index.\n\nauthor: {author}\nlocation: {city}, {state}, {country}" +
-                (f"\n\ncc @{github_username}" if github_username else "") +
-                "\n\n---\n_Raised by AI. Feel free to update if any information is incorrect._")
         subprocess.run(
-            ["gh", "pr", "edit", pr_url, "--repo", REPO, "--body", body],
+            ["gh", "pr", "edit", pr_url, "--repo", REPO, "--body", pr_body()],
             check=True,
         )
         print(f"PR updated: {pr_url}")
@@ -411,18 +412,25 @@ def _resolve_gh(value: str) -> str:
     return value
 
 
-def github_profile_location(username: str) -> str:
-    """Return raw `location` field from GitHub profile, empty if unset/unavailable."""
+def github_profile_info(username: str) -> dict:
+    """Return {name, location, bio, blog, company} from GitHub profile, {} if unavailable."""
     try:
         resp = subprocess.run(
-            ["gh", "api", f"users/{username}", "--jq", ".location"],
+            ["gh", "api", f"users/{username}"],
             capture_output=True, text=True, timeout=10,
         )
         if resp.returncode == 0:
-            return resp.stdout.strip()
+            data = json.loads(resp.stdout)
+            return {
+                "name": data.get("name") or "",
+                "location": data.get("location") or "",
+                "bio": data.get("bio") or "",
+                "blog": data.get("blog") or "",
+                "company": data.get("company") or "",
+            }
     except Exception:
         pass
-    return ""
+    return {}
 
 
 def main() -> None:
@@ -469,15 +477,24 @@ def main() -> None:
     if github_username:
         print(f"GitHub: {github_username}")
 
-    if args.city:
-        info["city"] = args.city
-    elif not info.get("city") and github_username:
-        loc = github_profile_location(github_username)
-        if loc:
-            city = loc.split(",")[0].strip()
+    if github_username:
+        gh_profile = github_profile_info(github_username)
+        if gh_profile:
+            print(f"GitHub profile: {gh_profile}")
+        if not info.get("author") and gh_profile.get("name"):
+            info["author"] = gh_profile["name"]
+        if not info.get("city") and not args.city and gh_profile.get("location"):
+            city = gh_profile["location"].split(",")[0].strip()
             if city:
                 info["city"] = city
-                print(f"GitHub profile location: {loc}")
+        if not info.get("topics") and gh_profile.get("bio"):
+            bio_lower = gh_profile["bio"].lower()
+            topics = [kw for kw in TOPIC_KEYWORDS if re.search(r"\b" + re.escape(kw) + r"\b", bio_lower)]
+            if topics:
+                info["topics"] = topics[:4]
+
+    if args.city:
+        info["city"] = args.city
 
     if info.get("city") and (not args.state or not args.country):
         geo = geocode_city(info["city"])
