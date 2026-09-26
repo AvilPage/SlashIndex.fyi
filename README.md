@@ -15,11 +15,8 @@ Find your people, fast — every personal blog on the planet, in one place.
 CottageCrawl generates a csv file.
 
 ```shell
-cottagecrawl slashindex
-```
-
-```shell
-uv run index.py
+slashindex sync --output slashindex.csv
+slashindex build
 ```
 
 ### Deployment
