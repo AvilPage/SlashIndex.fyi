@@ -3,9 +3,7 @@
 Find your people, fast — every personal blog on the planet, in one place.
 
 
-### Adding a domain
-
-To add a personal site, edit `index.csv` and open a pull request:
+### Adding a domain via pull request
 
 1. Add one row beneath the header. `domain` is required; `author`, `topics`, `pages`,
    `country`, `state`, and `city` are optional.
@@ -36,6 +34,17 @@ CLI tool generates a csv file.
 slashindex sync --output slashindex.csv
 slashindex build
 ```
+
+### Adding a domain with the CLI
+
+To enrich a personal site and add it to `index.csv`, run:
+
+```shell
+slashindex add https://example.com --csv index.csv
+```
+
+The command normalizes the domain, extracts available metadata, and sorts the CSV. Use
+`--dry-run` to print the row without writing it.
 
 ### Reprocessing domain metadata
 
