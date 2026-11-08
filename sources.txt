@@ -10,6 +10,7 @@ https://minifeed.net/blogs/opml.xml
 https://nownownow.com/nownownow.txt
 https://ooh.directory/feeds/cats/n7yp7q/opml/personal.xml
 https://personalsit.es/feed/opml.opml
+https://planet.emacslife.com/opml.xml
 https://powrss.com/blogs?page={1..32}
 https://raw.githubusercontent.com/AvilPage/SlashIndex.fyi/refs/heads/master/index.csv
 https://raw.githubusercontent.com/IndieWebClubBlr/website/refs/heads/main/blogroll.opml
@@ -23,6 +24,7 @@ https://raw.githubusercontent.com/timqian/chinese-independent-blogs/refs/heads/m
 https://raw.githubusercontent.com/wesbos/awesome-uses/refs/heads/master/src/data.js
 https://rknight.me/blog/roll/opml.xml
 https://slashfriends.org/sites.json
+https://static.quest/members/
 https://text.blogosphere.app/blogs
 https://text.blogosphere.app/blogs-{2..13}
 https://web.archive.org/web/20230610101816/https://www.indianbloggers.org/
